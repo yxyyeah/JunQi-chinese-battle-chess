@@ -8,43 +8,42 @@ import subboard
 from settings import Settings
 
 def update_screen(settings,screen,chesses,dead_chesses):
+    '''draw order: screen -> corner_flag -> chess -> dead_chess -> win/tie_sign  
+    -> notice_board -> moving_chess -> mouse'''
     screen.fill(settings.bg_color)
     screen.blit(settings.bg_image,settings.bg_image_rect)
-    #blit tie and white flag on corner
+    #draw tie and white flag on corner
     if settings.detec_active:
         screen.blit(settings.tie_flag,settings.tie_flag_rect)
         screen.blit(settings.wh_flag,settings.wh_flag_rect)
+    
     #game allow end controls whether chess has been uncovered
     settings.game_allow_end = True
     settings.red_no_pieces = True
     settings.black_no_pieces = True
-    #blit chess
+    #draw chess
     for chess in chesses:
         if not chess.dead:
             chess.draw_chess()
         if chess.covered and settings.game_allow_end:
             settings.game_allow_end = False
-        if chess.text_color == settings.text_color_red and not chess.dead:
-            if chess.rank >= 0:
-                settings.red_no_pieces = False
-        elif chess.text_color == settings.text_color_black and not chess.dead:
-            if chess.rank >= 0:
-                settings.black_no_pieces = False     
+        check_pieces(chess,settings)
 
     for chess in dead_chesses:
         chess.screen.fill(chess.chess_color_out,chess.rect_out)
         chess.screen.blit(chess.msg_image,chess.msg_image_rect)
     
-    if settings.chess_move:
-        chess_on_mouse(settings)
-
-    if settings.red_no_pieces or settings.black_no_pieces:
+    #game tie
+    if settings.red_no_pieces and settings.black_no_pieces:
+        settings.game_tie = True
+    #game win
+    elif settings.red_no_pieces or settings.black_no_pieces:
         if not settings.chess_move and not settings.game_end:                     #b\c if chess is moving it is removed from the chesses list
             settings.game_win = True
             settings.win_music_play = True
             settings.game_end = True
 
-    #show the main win or tie sign
+    #draw the main win or tie sign
     if settings.game_win or settings.game_lose:
         blit_win(settings,screen)
         #play music once
@@ -55,12 +54,13 @@ def update_screen(settings,screen,chesses,dead_chesses):
         if settings.free_fall:
             free_fall(settings.tie_imageb_rect,settings)
         screen.blit(settings.tie_imageb,settings.tie_imageb_rect)
-
-    #show notice board
+    #draw notice board
     if settings.board_appear:
         settings.board.draw_board()
-
-    #blit mouse image
+    #draw moving chess
+    if settings.chess_move:
+        chess_on_mouse(settings)
+    #draw mouse image
     if settings.mouse_enter:
         mouse_pos(settings,screen)
 
@@ -72,6 +72,17 @@ def mouse_pos(settings,screen):
     settings.mouse_image_rect.center = pos
     screen.blit(settings.mouse_image,settings.mouse_image_rect)
 
+def check_pieces(chess,settings):
+    '''feedback to settings.red/black no pieces'''
+    if settings.red_no_pieces:
+        if chess.text_color == settings.text_color_red and not chess.dead:
+            if chess.rank >= 0:
+                settings.red_no_pieces = False
+    if settings.black_no_pieces:    
+        if chess.text_color == settings.text_color_black and not chess.dead:
+            if chess.rank >= 0:
+                settings.black_no_pieces = False
+
 def chess_on_mouse(settings):
     settings.chess_1.rect_out.center = settings.mouse_image_rect.center
     settings.chess_1.update_msg(settings.chess_1.msg)
@@ -79,7 +90,7 @@ def chess_on_mouse(settings):
     settings.chess_1.draw_chess()
 
 def win_center(screen,settings):
-    '''putting the bg image on the center of the screen'''
+    '''putting the win image on the center of the screen'''
     screen_rect = screen.get_rect()
     win_image_rect = settings.win_image.get_rect()
     win_image_rect.center = screen_rect.center
@@ -613,8 +624,8 @@ def add_dead(chess,settings,dead_num=0):
 def undo(settings,chesses,dead_chesses):
     '''saving the qualities of two chesses in settings, if need to undo,
     exchange back their qualities. the two chesses in settings are in chesses
-    sprites!!!    Note: the undo function has strong relations to the move_
-    chess function!''' 
+    sprites!!!    Note: if change sth in the move_chess function, you probably
+    need to change it in the undo function!''' 
     if settings.allow_undo:
         settings.allow_undo = False
 
