@@ -19,6 +19,7 @@ def run_game():
     dead_chesses = []
     game_func.create_whole_chess(settings,chesses,screen)
     settings.chesses = chesses[:]
+
     while True:
         game_func.check_event(chesses,settings,dead_chesses,screen)
         game_func.update_screen(settings,screen,chesses,dead_chesses)

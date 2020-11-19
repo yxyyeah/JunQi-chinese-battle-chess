@@ -8,9 +8,9 @@ class Settings():
         self.screen_width = 1280
         self.screen_height = 720
         self.bg_color = (0,0,0)
-        self.full = True
+        self.full = False
         self.screen = pygame.display.set_mode(
-                    (self.screen_width,self.screen_height),pygame.FULLSCREEN)
+                    (self.screen_width,self.screen_height),pygame.RESIZABLE)
         self.screen_rect = self.screen.get_rect()
         
     #bg image
@@ -136,7 +136,7 @@ class Settings():
         self.wht_image_rect = self.wht_image.get_rect()
         self.wht_image_rect.bottom = self.screen_rect.bottom
         self.wht_image_rect.left=self.tie_imaget_rect.right+3*self.screen_width/128
-    #tie flag
+    #white flag
         self.wh_flag = self.wht_image
         self.wh_flag_rect = self.wht_image_rect
 
@@ -236,7 +236,7 @@ class Settings():
         self.chess1index = None
         #create an unchangable chesses index
         self.chesses = None
-        #chess_1 center cache
+        #chess_1 center cache used for moving chess_1, does not effect undo
         self.a = None
         #chess_1 moves with mouse
         self.chess_move = False
@@ -261,6 +261,9 @@ class Settings():
         #used to control if one side has no pieces then game end
         self.red_no_pieces = True
         self.black_no_pieces = True
+
+        #moved chess cache used for undo
+        self.move_cache = []
     #win music
         f = r'victory.ogg'
         try:
@@ -316,6 +319,7 @@ class Settings():
         self.game_active = True
         self.red_no_pieces = True
         self.black_no_pieces = True
+        self.move_cache = []
         self.win_music_play = False
 
         #distribute position

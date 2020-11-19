@@ -45,12 +45,14 @@ def update_screen(settings,screen,chesses,dead_chesses):
 
     #draw the main win or tie sign
     if settings.game_win or settings.game_lose:
+        print(len(settings.move_cache))
         blit_win(settings,screen)
         #play music once
         if settings.win_music_play:
             settings.win_music_play = False
             settings.win_music.play()
     elif settings.game_tie:
+        print(len(settings.move_cache))
         if settings.free_fall:
             free_fall(settings.tie_imageb_rect,settings)
         screen.blit(settings.tie_imageb,settings.tie_imageb_rect)
@@ -137,11 +139,6 @@ def check_event(chesses,settings,dead_chesses,screen):
                 for chess in chesses:
                     if (chess.rect_out.collidepoint(pos) and
                                                     settings.game_active):
-                        #undo is only allowed right after you move, and will be 
-                        #invalid once you click on another chess
-                        if not chess.dead:
-                            settings.allow_undo = False
-
                         if not settings.second:
                             #show the identity of the chess
                             if chess.covered == True:
@@ -170,12 +167,18 @@ def check_event(chesses,settings,dead_chesses,screen):
                         elif settings.second:
                             settings.second = False
                             settings.chess_2 = chess
+                            settings.dead_num = 0
                             det = determine(settings.chess_1,settings.chess_2,
                                 settings,chesses,screen,dead_chesses)
                             if det:
                                 chesses.insert(settings.chess1index,settings.chess_1)
                                 move_chess(settings.chess_1,settings,
                                                     chesses,settings.chess_2)
+                                a=(settings.chess_1,settings.chess_2,
+                                                            settings.dead_num)
+                                #if len(settings.move_cache) > 49:
+                                #    settings.move_cache.pop(0)
+                                settings.move_cache.append(a)
                                 
                                 settings.chess_move = False
                                 break
@@ -626,50 +629,57 @@ def undo(settings,chesses,dead_chesses):
     exchange back their qualities. the two chesses in settings are in chesses
     sprites!!!    Note: if change sth in the move_chess function, you probably
     need to change it in the undo function!''' 
-    if settings.allow_undo:
-        settings.allow_undo = False
+    if (not settings.game_end and settings.game_active 
+                                        and not settings.chess_move):
+        indicator = True
+        try:
+            chess_1,chess_2,dead_num = settings.move_cache[-1]
+        except IndexError:
+            indicator = False
+        else:
+            settings.move_cache.pop()
 
-        chess_1 = settings.chess_1
-        chess_2 = settings.chess_2
+        if indicator:
+        #whether the chess is mine
+            if (chess_2.text_color == settings.text_color_red and 
+                chess_2.rank == -1):
+                settings.red_mine += 1
+            elif (chess_2.text_color == settings.text_color_black and 
+                chess_2.rank == -1):
+                settings.black_mine += 1
 
-    #whether the chess is mine
-        if (settings.chess_2.text_color == settings.text_color_red and 
-            settings.chess_2.rank == -1):
-            settings.red_mine += 1
-        elif (settings.chess_2.text_color == settings.text_color_black and 
-            settings.chess_2.rank == -1):
-            settings.black_mine += 1
+        #exchange their position number and list index back first
+            chess_1.pos,chess_2.pos = chess_2.pos,chess_1.pos
+            a = chesses.index(chess_1)
+            b = chesses.index(chess_2)
+            chesses[a],chesses[b] = chesses[b],chesses[a]
 
-    #exchange their position number and list index back first
-        chess_1.pos,chess_2.pos = chess_2.pos,chess_1.pos
-        a = chesses.index(chess_1)
-        b = chesses.index(chess_2)
-        chesses[a],chesses[b] = chesses[b],chesses[a]
+            a = chess_1.rect_out.center
+            b = chess_2.rect_out.center
+            chess_1.rect_out.center = b
+            chess_2.rect_out.center = a
 
-        a = chess_1.rect_out.center
-        b = chess_2.rect_out.center
-        chess_1.rect_out.center = b
-        chess_2.rect_out.center = a
+            chess_1.update_msg(chess_1.msg)
+            chess_1.update_layer()
+            chess_2.update_msg(chess_2.msg)
+            chess_2.update_layer()
 
-        chess_1.update_msg(chess_1.msg)
-        chess_1.update_layer()
-        chess_2.update_msg(chess_2.msg)
-        chess_2.update_layer()
+            chess_1.dead = False
+            chess_2.dead = False
+            if dead_num == 0:
+                chess_2.dead = True
 
-        chess_1.dead = False
-        chess_2.dead = False
+        #have the settings.chesses updated
+            settings.chesses = chesses[:]
 
-    #have the settings.chesses updated
-        settings.chesses = chesses[:]
-
-        if settings.dead_num == 1:
-            del settings.dead_pool[-1]
-            del dead_chesses[-1]
-        elif settings.dead_num == 2:
-            del settings.dead_pool[-1]
-            del settings.dead_pool[-1]
-            del dead_chesses[-1]
-            del dead_chesses[-1]
+            if dead_num == 1:
+                del settings.dead_pool[-1]
+                del dead_chesses[-1]
+            elif dead_num == 2:
+                del settings.dead_pool[-1]
+                del settings.dead_pool[-1]
+                del dead_chesses[-1]
+                del dead_chesses[-1]
 
 def switch_screen(settings):
     '''let the displat switch between fullscreen and resizable'''
