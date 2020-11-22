@@ -8,7 +8,7 @@ def run_game():
     pygame.init()
     pygame.mixer.init()
 
-    os.environ['SDL_VIDEO_WINDOW_POS'] = '50,70'
+    os.environ['SDL_VIDEO_CENTERED'] = '1'
     pygame.mouse.set_visible(False)
 
     settings = Settings()

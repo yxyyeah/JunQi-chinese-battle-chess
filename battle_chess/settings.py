@@ -1,24 +1,24 @@
 import pygame
-
+import win32api,win32con
 class Settings():
     
     def __init__(self):
         
     #screen
-        self.screen_width = 1280
-        self.screen_height = 720
+        self.screen_width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+        self.screen_height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+        print(self.screen_width,self.screen_height)
         self.bg_color = (0,0,0)
-        self.full = False
+        self.noframe = True
         self.screen = pygame.display.set_mode(
-                    (self.screen_width,self.screen_height),pygame.RESIZABLE)
+                    (self.screen_width,self.screen_height),pygame.NOFRAME)
         self.screen_rect = self.screen.get_rect()
-        
     #bg image
-        f=r'images\bg_720.jpg'
+        f=r'images\1536_864.jpg'
         try:
             bg_image = pygame.image.load(f)
         except pygame.error:
-            f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\bg_720.jpg'
+            f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\1536_864.jpg'
             bg_image = pygame.image.load(f)
         self.bg_image_width = int(self.screen_width/1.32)
         self.bg_image_height = int(1147*self.bg_image_width/1749)
@@ -169,14 +169,26 @@ class Settings():
     #chess
         self.chess_width_out = self.screen_width/26.4
         self.chess_height_out = self.chess_width_out*1.6
-        self.chess_width_in = self.chess_width_out*0.75
-        self.chess_height_in = self.chess_height_out*0.75
+        self.chess_width_in = self.chess_width_out*0.85
+        self.chess_height_in = self.chess_height_out*0.85
         self.chess_color_back = (0,0,0)
         self.chess_color_front = (255,255,255)
         self.chess_color_selected = (0,255,0)
         self.text_color_red = (255,0,0)
         self.text_color_black = (0,0,0)
-        self.font = pygame.font.SysFont('华文楷体',32,0)
+        #get proper font size
+        active = True
+        self.fontsize = 1
+        while active:
+            self.font = pygame.font.SysFont('华文楷体',self.fontsize,0)
+            self.test_image = self.font.render('测试',True,(0,0,0))
+            self.test_image = pygame.transform.rotate(self.test_image,90)
+            self.test_image_rect = self.test_image.get_rect()
+            if self.test_image_rect[2] <= self.chess_width_in:
+                self.fontsize += 1
+            else:
+                active = False
+        self.font = pygame.font.SysFont('华文楷体',self.fontsize-1,0)
         #distribute chess position
         self.pos_num = 0
 

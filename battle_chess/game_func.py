@@ -682,15 +682,15 @@ def undo(settings,chesses,dead_chesses):
                 del dead_chesses[-1]
 
 def switch_screen(settings):
-    '''let the displat switch between fullscreen and resizable'''
-    if settings.full:
+    '''let the displat switch between noframe(fullscreen) and resizable'''
+    if settings.noframe:
         pygame.display.set_mode(
-            (settings.screen_width,settings.screen_height),pygame.RESIZABLE)
-        settings.full = False
+            (settings.screen_width,settings.screen_height-1),pygame.RESIZABLE)
+        settings.noframe = False
     else:
         pygame.display.set_mode(
-            (settings.screen_width,settings.screen_height),pygame.FULLSCREEN)
-        settings.full = True
+            (settings.screen_width,settings.screen_height),pygame.NOFRAME)
+        settings.noframe = True
 
 def free_fall(rect,settings):
     a = 0.1
