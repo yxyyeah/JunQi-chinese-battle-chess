@@ -2,15 +2,26 @@ import pygame
 import sys
 import random
 import time
+import threading
 from chess import Chess
 from board import Board
 import subboard
 from settings import Settings
+from button import Button
 
-def update_screen(settings,screen,chesses,dead_chesses):
-    '''draw order: screen -> corner_flag -> chess -> dead_chess -> win/tie_sign  
-    -> notice_board -> moving_chess -> mouse'''
+def update_screen(settings,screen,chesses,dead_chesses,play_button):
+    '''draw order: red_bg -> bg_image -> corner_flag -> chess -> dead_chess -> 
+    win/tie_sign -> play_button -> notice_board -> moving_chess -> mouse'''
     screen.fill(settings.bg_color)
+    #determine first to go
+    if settings.show_order:
+        settings.show_order = False
+        t = threading.Thread(target=show_play_order,args=(settings,screen))
+        t.start()
+    #draw show order (red bg)
+    if settings.red_bg:
+        pygame.draw.rect(screen,settings.color_red,settings.half_red_bg)
+    #draw bg image
     screen.blit(settings.bg_image,settings.bg_image_rect)
     #draw tie and white flag on corner
     if settings.detec_active:
@@ -56,6 +67,9 @@ def update_screen(settings,screen,chesses,dead_chesses):
         if settings.free_fall:
             free_fall(settings.tie_imageb_rect,settings)
         screen.blit(settings.tie_imageb,settings.tie_imageb_rect)
+    #draw play button
+    if settings.play_button_on:
+        settings.play_button.draw_button()
     #draw notice board
     if settings.board_appear:
         settings.board.draw_board()
@@ -73,6 +87,17 @@ def mouse_pos(settings,screen):
     pos = pygame.mouse.get_pos()
     settings.mouse_image_rect.center = pos
     screen.blit(settings.mouse_image,settings.mouse_image_rect)
+
+def show_play_order(settings,screen):
+    settings.red_bg = True
+    n = random.randint(0,1)
+    if n == 0:
+        settings.half_red_bg.left = settings.screen_rect.left
+        time.sleep(3)
+    elif n == 1:
+        settings.half_red_bg.right = settings.screen_rect.right
+        time.sleep(3)
+    settings.red_bg = False
 
 def check_pieces(chess,settings):
     '''feedback to settings.red/black no pieces'''
@@ -122,7 +147,7 @@ def check_event(chesses,settings,dead_chesses,screen):
                 dead_chesses.clear()
                 sys.exit()
             if event.key == pygame.K_f:
-                undo(settings,chesses,dead_chesses)
+                undo(settings,chesses,dead_chesses)     #check game active being put in undo function
             if event.key == pygame.K_RETURN:
                 switch_screen(settings)
             if event.key == pygame.K_r:
@@ -233,6 +258,14 @@ def check_event(chesses,settings,dead_chesses,screen):
                     settings.board_appear = False
                     settings.game_active = True
 
+            #push play button
+            if settings.play_button != None:
+                if settings.play_button.button_in.collidepoint(event.pos):
+                    settings.play_button_on = False
+                    settings.play_button = None
+                    settings.show_order = True
+                    settings.game_active = True
+
         if event.type == pygame.MOUSEBUTTONUP and not settings.chess_move:
             settings.mouse_image = settings.palm_image
 
@@ -269,6 +302,12 @@ def check_event(chesses,settings,dead_chesses,screen):
                 else:
                     settings.board.normal_no()
 
+            if settings.play_button_on:
+                if settings.play_button.button_in.collidepoint(event.pos):
+                    settings.play_button.touched_button('Play')
+                else:
+                    settings.play_button.normal_button('Play')
+                    
 def highlight_chess(chess,settings):
     '''highlight chess when uncover the chess'''
     '''currently not used'''
@@ -723,6 +762,7 @@ def free_fall(rect,settings):
     
 def replay(settings,chesses,dead_chesses,screen):
     settings.init_set()
+    settings.play_button = Button(screen,settings,'Play')
     chesses.clear()
     dead_chesses.clear()
     create_whole_chess(settings,chesses,screen)
@@ -983,6 +1023,3 @@ def test(settings,screen):
                     m += 1
         n += 1
     print(m)
-
-
-

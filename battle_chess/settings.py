@@ -7,12 +7,17 @@ class Settings():
     #screen
         self.screen_width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
         self.screen_height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
-        print(self.screen_width,self.screen_height)
         self.bg_color = (0,0,0)
         self.noframe = True
         self.screen = pygame.display.set_mode(
                     (self.screen_width,self.screen_height),pygame.NOFRAME)
         self.screen_rect = self.screen.get_rect()
+    
+    #red half bg - used to indicate who goes first
+        self.half_red_bg = pygame.Rect(0,0,int(self.screen_width/2),
+                                                    self.screen_height)
+        self.color_red = (255,0,0)
+
     #bg image
         f=r'images\1536_864.jpg'
         try:
@@ -165,7 +170,7 @@ class Settings():
         self.board_appear = False
 
         self.board = None
-        
+    
     #chess
         self.chess_width_out = self.screen_width/26.4
         self.chess_height_out = self.chess_width_out*1.6
@@ -192,6 +197,16 @@ class Settings():
         #distribute chess position
         self.pos_num = 0
 
+    #play button
+        self.play_width_out = int(self.screen_width*25/192)
+        self.play_height_out = int(self.play_width_out*0.4)
+        self.play_width_in = int(self.play_width_out*0.92)
+        self.play_height_in = int(self.play_height_out*0.8)
+        self.play_button_color_in_1 = (0,230,0)
+        self.play_button_color_in_2 = (0,200,0)
+        self.play_button_color_out = (0,255,0)
+        self.play_text_color = (0,0,0)
+        self.play_font = pygame.font.SysFont('calibri',self.fontsize-1)
 
     #chess lines and rows spacing
         self.line_1_pos_x = (self.screen_width-self.bg_image_width)/2
@@ -268,12 +283,19 @@ class Settings():
         self.game_end = False
         #determine whether one can admit tie or lose
         self.game_allow_end = False
-        #when notice board pop up, game will not be active
-        self.game_active = True
+        #when notice board pop up, or before pushing the play button, 
+        #game will not be active
+        self.game_active = False
         #used to control if one side has no pieces then game end
         self.red_no_pieces = True
         self.black_no_pieces = True
-
+        #used to indicate who goes first
+        self.red_bg = False
+        #used to show the order of play, also control the duration-3seconds
+        self.show_order = False
+        #used to show play button at the beginning
+        self.play_button_on = True
+        self.play_button = None
         #moved chess cache used for undo
         self.move_cache = []
     #win music
@@ -328,11 +350,15 @@ class Settings():
         self.game_end = False
         #determine whether one can admit tie or lose
         self.game_allow_end = False
-        self.game_active = True
+        self.game_active = False
         self.red_no_pieces = True
         self.black_no_pieces = True
         self.move_cache = []
         self.win_music_play = False
+        self.red_bg = False
+        self.show_order = False
+        self.play_button_on = True
+        self.play_button = None
 
         #distribute position
         self.pos_num = 0
