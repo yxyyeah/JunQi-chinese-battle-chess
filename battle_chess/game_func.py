@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import time
+from datetime import datetime
 import threading
 from chess import Chess
 from board import Board
@@ -11,16 +12,11 @@ from button import Button
 
 def update_screen(settings,screen,chesses,dead_chesses,play_button):
     '''draw order: red_bg -> bg_image -> corner_flag -> chess -> dead_chess -> 
-    win/tie_sign -> play_button -> notice_board -> moving_chess -> mouse'''
+    win/tie_sign -> statistics_board -> play_button -> notice_board -> 
+    moving_chess -> mouse'''
     screen.fill(settings.bg_color)
-    #determine first to go
-    if settings.show_order:
-        settings.show_order = False
-        t = threading.Thread(target=show_play_order,args=(settings,screen))
-        t.start()
-    #draw show order (red bg)
-    if settings.red_bg:
-        pygame.draw.rect(screen,settings.color_red,settings.half_red_bg)
+    #draw play order (red bg)
+    draw_play_order(settings,screen)
     #draw bg image
     screen.blit(settings.bg_image,settings.bg_image_rect)
     #draw tie and white flag on corner
@@ -29,44 +25,61 @@ def update_screen(settings,screen,chesses,dead_chesses,play_button):
         screen.blit(settings.wh_flag,settings.wh_flag_rect)
     
     #game allow end controls whether chess has been uncovered
-    settings.game_allow_end = True
-    settings.red_no_pieces = True
-    settings.black_no_pieces = True
-    #draw chess
+    if settings.game_rewind:
+        settings.game_allow_end = True
+        settings.red_no_pieces = False
+        settings.black_no_pieces = False
+    else:
+        settings.game_allow_end = True
+        settings.red_no_pieces = True
+        settings.black_no_pieces = True
+    #draw chess (when drawing chess, check if game allow end)
     for chess in chesses:
         if not chess.dead:
             chess.draw_chess()
-        if chess.covered and settings.game_allow_end:
+        if chess.covered:
             settings.game_allow_end = False
-        check_pieces(chess,settings)
-
+        if not settings.game_rewind:
+            check_pieces(chess,settings)
+    
+    #draw dead chess
     for chess in dead_chesses:
         chess.screen.fill(chess.chess_color_out,chess.rect_out)
-        chess.screen.blit(chess.msg_image,chess.msg_image_rect)
-    
+        chess.screen.blit(chess.msg_image,chess.msg_image_rect)    
     #game tie
     if settings.red_no_pieces and settings.black_no_pieces:
-        settings.game_tie = True
+        settings.game_result = 'tie'
+        settings.game_end = True
     #game win
     elif settings.red_no_pieces or settings.black_no_pieces:
         if not settings.chess_move and not settings.game_end:                     #b\c if chess is moving it is removed from the chesses list
-            settings.game_win = True
+            settings.game_result = 'win'
             settings.win_music_play = True
             settings.game_end = True
 
     #draw the main win or tie sign
-    if settings.game_win or settings.game_lose:
-        print(len(settings.move_cache))
+    if settings.game_result == 'win':
+        if settings.calculating:
+            settings.end_time = datetime.now().replace(microsecond=0)
+            settings.draw_stat = game_record(settings,screen)
         blit_win(settings,screen)
         #play music once
         if settings.win_music_play:
             settings.win_music_play = False
             settings.win_music.play()
-    elif settings.game_tie:
-        print(len(settings.move_cache))
+        #draw msg - the msg is directly rendered on bg
+        screen.blit(settings.draw_stat[0],settings.draw_stat[1])
+        screen.blit(settings.draw_stat[2],settings.draw_stat[3])
+    elif settings.game_result == 'tie':
+        if settings.calculating:
+            settings.end_time = datetime.now().replace(microsecond=0)
+            settings.draw_stat = game_record(settings,screen)
         if settings.free_fall:
             free_fall(settings.tie_imageb_rect,settings)
         screen.blit(settings.tie_imageb,settings.tie_imageb_rect)
+        #draw msg - the msg is directly rendered on bg
+        screen.blit(settings.draw_stat[0],settings.draw_stat[1])
+        screen.blit(settings.draw_stat[2],settings.draw_stat[3])
     #draw play button
     if settings.play_button_on:
         settings.play_button.draw_button()
@@ -88,7 +101,7 @@ def mouse_pos(settings,screen):
     settings.mouse_image_rect.center = pos
     screen.blit(settings.mouse_image,settings.mouse_image_rect)
 
-def show_play_order(settings,screen):
+def randomize_play_order(settings,screen):
     settings.red_bg = True
     n = random.randint(0,1)
     if n == 0:
@@ -98,6 +111,16 @@ def show_play_order(settings,screen):
         settings.half_red_bg.right = settings.screen_rect.right
         time.sleep(3)
     settings.red_bg = False
+
+def draw_play_order(settings,screen):
+    '''first randomize order, then draw it'''
+    if settings.show_order:
+        settings.show_order = False
+        t = threading.Thread(target=randomize_play_order,args=(settings,screen))
+        t.start()
+
+    if settings.red_bg:
+        pygame.draw.rect(screen,settings.color_red,settings.half_red_bg)
 
 def check_pieces(chess,settings):
     '''feedback to settings.red/black no pieces'''
@@ -135,6 +158,7 @@ def blit_win(settings,screen):
     screen.blit(settings.win_image,win_rect)
 
 def check_event(chesses,settings,dead_chesses,screen):
+    '''storing all the funcs in case you'll need them in the future'''
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             chesses.clear()
@@ -171,6 +195,9 @@ def check_event(chesses,settings,dead_chesses,screen):
                                 chess.chess_color_in=settings.chess_color_front
                                 chess.update_msg(chess.msg)
                                 chess.covered = False
+                                #save it to move cache
+                                a=('uncover',chess,0)
+                                settings.move_cache.append(a)
                                 break
                             
                             elif not chess.dead and chess.move:
@@ -241,7 +268,7 @@ def check_event(chesses,settings,dead_chesses,screen):
             if (settings.wh_flag_rect.collidepoint(event.pos) and 
                                                 not settings.chess_move):
                 if settings.game_allow_end and settings.game_active:
-                    settings.game_lose = True
+                    settings.game_result = 'win'
                     settings.win_music_play = True
                     settings.game_end = True
                 elif settings.game_active:
@@ -307,7 +334,286 @@ def check_event(chesses,settings,dead_chesses,screen):
                     settings.play_button.touched_button('Play')
                 else:
                     settings.play_button.normal_button('Play')
-                    
+
+def check_event_gameend(chesses,settings,dead_chesses,screen,event):
+    '''performing game_not_started functions'''
+    if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_r:
+            replay(settings,chesses,dead_chesses,screen)
+            settings.start_time = datetime.now().replace(microsecond=0)
+        if event.key == pygame.K_a and settings.game_result != None:  #only when it is literally game end, can game be rewinded
+            rewind(settings)
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.button == 1 or event.button == 5:
+            #push play button
+            if settings.play_button != None:
+                if settings.play_button.button_in.collidepoint(event.pos):
+                    settings.play_button_on = False
+                    settings.play_button = None
+                    settings.show_order = True
+                    settings.game_end = False
+                    settings.start_time = datetime.now().replace(microsecond=0)
+
+    if event.type == pygame.MOUSEMOTION:
+        if settings.play_button_on:
+            if settings.play_button.button_in.collidepoint(event.pos):
+                settings.play_button.touched_button('Play')
+            else:
+                settings.play_button.normal_button('Play')
+                                    
+def check_event_ingame(chesses,settings,dead_chesses,screen,event):
+    if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_f:
+            undo(settings,chesses,dead_chesses)     #check game active being put in undo function
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.button == 1 or event.button == 5:
+            pos = event.pos
+            for chess in chesses:
+                if (chess.rect_out.collidepoint(pos) and
+                                                settings.game_active):
+                    if not settings.second:
+                        #show the identity of the chess
+                        if chess.covered == True:
+                            chess.msg = chess.identity
+                            chess.chess_color_in=settings.chess_color_front
+                            chess.update_msg(chess.msg)
+                            chess.covered = False
+                            #save it to move cache
+                            a=('uncover',chess,0)
+                            settings.move_cache.append(a)
+                            break
+                        
+                        elif not chess.dead and chess.move:
+                            #make a green mark on selected chess
+                            a = settings.chess_color_selected
+                            chess.chess_color_out = a
+                            #a is just a tuple, not affiliated with the 
+                            #chess. but settings.chess_1 has the same 
+                            # qualities as chess. settings.chess_1 is in the
+                            # sprites
+                            settings.a = chess.rect_out.center
+                            settings.chess1index = chesses.index(chess)
+                            chesses.remove(chess)
+                            settings.chess_1 = chess
+                            settings.second = True
+                            settings.chess_move = True
+                            break
+
+                    elif settings.second:
+                        settings.second = False
+                        settings.chess_2 = chess
+                        settings.dead_num = 0
+                        det = determine(settings.chess_1,settings.chess_2,
+                            settings,chesses,screen,dead_chesses)
+                        if det:
+                            chesses.insert(settings.chess1index,settings.chess_1)
+                            move_chess(settings.chess_1,settings,
+                                                chesses,settings.chess_2)
+                            a=(settings.chess_1,settings.chess_2,
+                                                        settings.dead_num)
+                            #if len(settings.move_cache) > 49:
+                            #    settings.move_cache.pop(0)
+                            settings.move_cache.append(a)
+                            
+                            settings.chess_move = False
+                            break
+                        elif not det:
+                            #let chess1 be where it used to be
+                            color=settings.chess_color_back
+                            chess = settings.chess_1
+                            chess.chess_color_out=color
+                            chess.rect_out.center = settings.a
+                            chess.update_msg(chess.msg)
+                            chess.update_layer()
+                            chesses.insert(settings.chess1index,chess)
+                            settings.chess_move = False
+                            break
+
+        if event.button == 3 and settings.chess_move:
+            #let chess1 be where it used to be. cancel the move.
+            color=settings.chess_color_back
+            settings.chess_1.chess_color_out=color
+            settings.chess_1.rect_out.center = settings.a
+            settings.chess_1.update_msg(settings.chess_1.msg)
+            settings.chess_1.update_layer()
+            chesses.insert(settings.chess1index,settings.chess_1)
+            settings.chess_move = False
+            settings.second = False
+
+        #check mouse click on tie flag or white flag
+        if (settings.tie_flag_rect.collidepoint(event.pos) and 
+                                                not settings.chess_move):
+            if settings.game_active:
+                settings.board = subboard.TieBoard(settings,screen)
+                settings.board_appear = True
+                settings.game_active = False
+
+        if (settings.wh_flag_rect.collidepoint(event.pos) and 
+                                            not settings.chess_move):
+            if settings.game_allow_end and settings.game_active:    #this game_active prevents already in a board appear status and you click the sign once more
+                settings.game_result = 'win'
+                settings.win_music_play = True
+                settings.game_end = True
+                settings.game_active = False
+                settings.detec_active = False
+            elif settings.game_active:
+                settings.board = subboard.LoseBoard(settings,screen)
+                settings.board_appear = True
+                settings.game_active = False
+        
+        if settings.board_appear:
+            if settings.board.yes_rect.collidepoint(event.pos):     #yes_rect
+                settings.board.action()
+                settings.board_appear = False
+                settings.game_active = False
+            elif settings.board.no_rect.collidepoint(event.pos):   #no_rect
+                settings.board_appear = False
+                settings.game_active = True
+
+    if event.type == pygame.MOUSEMOTION:
+        #detect if mouse moves over those flags
+        if settings.detec_rect.collidepoint(event.pos):
+            settings.detec_active = True        #pygame event get first captures mousemotion causing detec_active remain True after clicking it. the solution is set detec_active=false in clicking function.
+        else:
+            settings.detec_active = False
+
+        if settings.tie_imaget_rect.collidepoint(event.pos):
+            settings.tie_flag = settings.tie_image
+        else:
+            settings.tie_flag = settings.tie_imaget
+        
+        if settings.wh_image_rect.collidepoint(event.pos):
+            settings.wh_flag = settings.wh_image
+        else:
+            settings.wh_flag = settings.wht_image
+
+        #detects if mouse move over the board
+        if settings.board_appear:
+            if settings.board.yes_rect.collidepoint(event.pos):
+                settings.board.touched_yes()
+            else:
+                settings.board.normal_yes()
+            if settings.board.no_rect.collidepoint(event.pos):
+                settings.board.touched_no()
+            else:
+                settings.board.normal_no()
+
+def check_event_display(chesses,settings,dead_chesses,screen,event):
+    '''check events for display'''
+    if event.type == pygame.QUIT:
+        sys.exit()
+
+    if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_ESCAPE:
+            sys.exit()
+        if event.key == pygame.K_RETURN:
+            switch_screen(settings)
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.button == 1 or event.button == 5:
+            #the mouse image will not immediately change, but will wait 
+            #until next screen update. but it does not matter, because the 
+            #following judgements are quick
+            settings.mouse_image = settings.fist_image
+
+    if event.type == pygame.MOUSEBUTTONUP and not settings.chess_move:
+        settings.mouse_image = settings.palm_image
+
+    if event.type == pygame.ACTIVEEVENT:
+        if event.gain == 1:
+            settings.mouse_enter = True
+        else:
+            settings.mouse_enter = False
+
+def check_event_gamerewind(chesses,settings,dead_chesses,screen,event):
+    '''funcs used during game rewind'''
+    if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_f:
+            undo(settings,chesses,dead_chesses)     #check game active being put in undo function
+        if event.key == pygame.K_r:
+            replay(settings,chesses,dead_chesses,screen)
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.button == 1 or event.button == 5:
+            pos = event.pos
+            for chess in chesses:
+                if (chess.rect_out.collidepoint(pos) and
+                                                settings.game_active):
+                    if not settings.second:
+                        #show the identity of the chess
+                        if chess.covered == True:
+                            chess.msg = chess.identity
+                            chess.chess_color_in=settings.chess_color_front
+                            chess.update_msg(chess.msg)
+                            chess.covered = False
+                            #save it to move cache
+                            a=('uncover',chess,0)
+                            settings.move_cache.append(a)
+                            break
+                        
+                        elif not chess.dead and chess.move:
+                            #make a green mark on selected chess
+                            a = settings.chess_color_selected
+                            chess.chess_color_out = a
+                            #a is just a tuple, not affiliated with the 
+                            #chess. but settings.chess_1 has the same 
+                            # qualities as chess. settings.chess_1 is in the
+                            # sprites
+                            settings.a = chess.rect_out.center
+                            settings.chess1index = chesses.index(chess)
+                            chesses.remove(chess)
+                            settings.chess_1 = chess
+                            settings.second = True
+                            settings.chess_move = True
+                            break
+
+                    elif settings.second:
+                        settings.second = False
+                        settings.chess_2 = chess
+                        settings.dead_num = 0
+                        det = determine(settings.chess_1,settings.chess_2,
+                            settings,chesses,screen,dead_chesses)
+                        if det:
+                            chesses.insert(settings.chess1index,settings.chess_1)
+                            move_chess(settings.chess_1,settings,
+                                                chesses,settings.chess_2)
+                            a=(settings.chess_1,settings.chess_2,
+                                                        settings.dead_num)
+                            #if len(settings.move_cache) > 49:
+                            #    settings.move_cache.pop(0)
+                            settings.move_cache.append(a)
+                            #the followings prevents triggering game win in rewind mode
+                            settings.game_result = None
+                            settings.win_music_play = False
+                            settings.game_end = False
+
+                            settings.chess_move = False
+                            break
+                        elif not det:
+                            #let chess1 be where it used to be
+                            color=settings.chess_color_back
+                            chess = settings.chess_1
+                            chess.chess_color_out=color
+                            chess.rect_out.center = settings.a
+                            chess.update_msg(chess.msg)
+                            chess.update_layer()
+                            chesses.insert(settings.chess1index,chess)
+                            settings.chess_move = False
+                            break
+
+        if event.button == 3 and settings.chess_move:
+            #let chess1 be where it used to be. cancel the move.
+            color=settings.chess_color_back
+            settings.chess_1.chess_color_out=color
+            settings.chess_1.rect_out.center = settings.a
+            settings.chess_1.update_msg(settings.chess_1.msg)
+            settings.chess_1.update_layer()
+            chesses.insert(settings.chess1index,settings.chess_1)
+            settings.chess_move = False
+            settings.second = False
+
 def highlight_chess(chess,settings):
     '''highlight chess when uncover the chess'''
     '''currently not used'''
@@ -336,6 +642,7 @@ def create_chess(settings,chesses,screen,a,b,chess):
     chesses.append(chess)
 
 def update_dead(screen,settings,dead_chesses):
+    '''moving the dead chess into right position on the screen'''
     chess = Chess(screen,settings)
     group = settings.dead_pool[-1]
     msg,color = group
@@ -472,7 +779,8 @@ def create_whole_chess(settings,chesses,screen):
             b += settings.row_spac                
 
 def move_chess(chess,settings,chesses,chess_2):
-    '''exchange the position of the two chess_spaces'''
+    '''exchange the position of the two chess_spaces, when editing this, you 
+    probably need to change in undo function'''
 
     #exchange pos number first and the index in the list
     chess.pos,chess_2.pos = chess_2.pos,chess.pos
@@ -539,7 +847,7 @@ def determine(chess,chess_2,settings,chesses,screen,dead_chesses):
             if chess.text_color == settings.text_color_red:
                 if settings.black_mine == 0:
                     indicator = True
-                    for chess_x in chesses.sprites():
+                    for chess_x in chesses:
                         if not chess_x.dead:
                             if chess.text_color == chess_x.text_color:
                                 if 0<chess_x.rank and chess_x.rank<chess.rank:
@@ -547,16 +855,16 @@ def determine(chess,chess_2,settings,chesses,screen,dead_chesses):
                                     break
                     if indicator:
                         chess_2.dead = True
-                        add_dead(chess_2,settings)
+                        add_dead(chess_2,settings,dead_num=1)
                         update_dead(screen,settings,dead_chesses)
-                        settings.game_win = True
+                        settings.game_result = 'win'
                         settings.win_music_play = True
                         settings.game_end = True
                         return True
             elif chess.text_color == settings.text_color_black:
                 if settings.red_mine == 0:
                     indicator = True
-                    for chess_x in chesses.sprites():
+                    for chess_x in chesses:
                         if not chess_x.dead:
                             if chess.text_color == chess_x.text_color:
                                 if 0<chess_x.rank and chess_x.rank<chess.rank:
@@ -564,9 +872,9 @@ def determine(chess,chess_2,settings,chesses,screen,dead_chesses):
                                     break
                     if indicator:
                         chess_2.dead = True
-                        add_dead(chess_2,settings)
+                        add_dead(chess_2,settings,dead_num=1)
                         update_dead(screen,settings,dead_chesses)
-                        settings.game_win = True
+                        settings.game_result = 'win'
                         settings.win_music_play = True
                         settings.game_end = True
                         return True
@@ -575,18 +883,18 @@ def determine(chess,chess_2,settings,chesses,screen,dead_chesses):
             if chess.text_color == settings.text_color_red:
                 if settings.black_mine == 0:
                     chess_2.dead = True
-                    add_dead(chess_2,settings)
+                    add_dead(chess_2,settings,dead_num=1)
                     update_dead(screen,settings,dead_chesses)
-                    settings.game_win = True
+                    settings.game_result = 'win'
                     settings.win_music_play = True
                     settings.game_end = True
                     return True
             elif chess.text_color == settings.text_color_black:
                 if settings.red_mine == 0:
                     chess_2.dead = True
-                    add_dead(chess_2,settings)
+                    add_dead(chess_2,settings,dead_num=1)
                     update_dead(screen,settings,dead_chesses)
-                    settings.game_win = True
+                    settings.game_result = 'win'
                     settings.win_music_play = True
                     settings.game_end = True
                     return True
@@ -595,29 +903,23 @@ def determine(chess,chess_2,settings,chesses,screen,dead_chesses):
             if chess.text_color == settings.text_color_red:
                 chess_2.dead = True
                 settings.black_mine -= 1
-                dead_num = 1
-                add_dead(chess_2,settings,dead_num)
+                add_dead(chess_2,settings,dead_num=1)
                 update_dead(screen,settings,dead_chesses)
-                settings.allow_undo = True
                 return True
             elif chess.text_color == settings.text_color_black:
                 chess_2.dead = True
                 settings.red_mine -= 1
-                dead_num = 1
-                add_dead(chess_2,settings,dead_num)
+                add_dead(chess_2,settings,dead_num=1)
                 update_dead(screen,settings,dead_chesses)
-                settings.allow_undo = True
                 return True
         
         elif chess.rank == 0 and chess_2.rank != -2:
             chess.dead = True
             chess_2.dead = True
-            dead_num = 2
-            add_dead(chess,settings,dead_num)
+            add_dead(chess,settings,dead_num=2)
             update_dead(screen,settings,dead_chesses)
-            add_dead(chess_2,settings,dead_num)
+            add_dead(chess_2,settings,dead_num=2)
             update_dead(screen,settings,dead_chesses)
-            settings.allow_undo = True
             if chess_2.rank == -1:
                 if chess.text_color == settings.text_color_red:
                     settings.black_mine -= 1
@@ -628,31 +930,25 @@ def determine(chess,chess_2,settings,chesses,screen,dead_chesses):
         elif chess_2.rank == 0:
             chess.dead = True
             chess_2.dead = True
-            dead_num = 2
-            add_dead(chess,settings,dead_num)
+            add_dead(chess,settings,dead_num=2)
             update_dead(screen,settings,dead_chesses)
-            add_dead(chess_2,settings,dead_num)
+            add_dead(chess_2,settings,dead_num=2)
             update_dead(screen,settings,dead_chesses)
-            settings.allow_undo = True
             return True
 
         elif chess.rank == chess_2.rank and chess.rank >= 0:
             chess.dead = True
             chess_2.dead = True
-            dead_num = 2
-            add_dead(chess,settings,dead_num)
+            add_dead(chess,settings,dead_num=2)
             update_dead(screen,settings,dead_chesses)
-            add_dead(chess_2,settings,dead_num)
+            add_dead(chess_2,settings,dead_num=2)
             update_dead(screen,settings,dead_chesses)
-            settings.allow_undo = True
             return True
         
         elif chess.rank > chess_2.rank and chess_2.rank > 0:
             chess_2.dead = True
-            dead_num = 1
-            add_dead(chess_2,settings,dead_num)
+            add_dead(chess_2,settings,dead_num=1)
             update_dead(screen,settings,dead_chesses)
-            settings.allow_undo = True
             return True
 
     #if the move is illegal, cancel the green mark 
@@ -664,30 +960,41 @@ def add_dead(chess,settings,dead_num=0):
     settings.dead_num = dead_num
 
 def undo(settings,chesses,dead_chesses):
-    '''saving the qualities of two chesses in settings, if need to undo,
+    '''saving the qualities of one (or two) chesses in settings, if need to undo,
     exchange back their qualities. the two chesses in settings are in chesses
     sprites!!!    Note: if change sth in the move_chess function, you probably
     need to change it in the undo function!''' 
     if (not settings.game_end and settings.game_active 
                                         and not settings.chess_move):
         indicator = True
+        uncover_ind = False
         try:
             chess_1,chess_2,dead_num = settings.move_cache[-1]
         except IndexError:
             indicator = False
         else:
+            if chess_1 == 'uncover':
+                uncover_ind = True
             settings.move_cache.pop()
 
-        if indicator:
-        #whether the chess is mine
+        if uncover_ind:
+            chess_2.covered = True
+            chess_2.chess_color_in = settings.chess_color_back
+            chess_2.msg = ''
+            chess_2.update_msg(chess_2.msg)
+            #have the settings.chesses updated
+            settings.chesses = chesses[:]
+
+        elif indicator:
+            #whether the chess is mine
             if (chess_2.text_color == settings.text_color_red and 
-                chess_2.rank == -1):
+                chess_2.rank == -1 and dead_num != 0):      #dead_num != 0 ensures only if 工兵eats 地雷,地雷 can be undo. if it is just moving one chess, then the already dead 地雷 should not count
                 settings.red_mine += 1
             elif (chess_2.text_color == settings.text_color_black and 
-                chess_2.rank == -1):
+                chess_2.rank == -1 and dead_num != 0):
                 settings.black_mine += 1
 
-        #exchange their position number and list index back first
+            #exchange their position number and list index back first
             chess_1.pos,chess_2.pos = chess_2.pos,chess_1.pos
             a = chesses.index(chess_1)
             b = chesses.index(chess_2)
@@ -708,7 +1015,7 @@ def undo(settings,chesses,dead_chesses):
             if dead_num == 0:
                 chess_2.dead = True
 
-        #have the settings.chesses updated
+            #have the settings.chesses updated
             settings.chesses = chesses[:]
 
             if dead_num == 1:
@@ -721,15 +1028,15 @@ def undo(settings,chesses,dead_chesses):
                 del dead_chesses[-1]
 
 def switch_screen(settings):
-    '''let the displat switch between noframe(fullscreen) and resizable'''
-    if settings.noframe:
+    '''let the displat switch between (fullscreen) and resizable'''
+    if settings.fullscreen:
         pygame.display.set_mode(
             (settings.screen_width,settings.screen_height-1),pygame.RESIZABLE)
-        settings.noframe = False
+        settings.fullscreen = False
     else:
         pygame.display.set_mode(
-            (settings.screen_width,settings.screen_height),pygame.NOFRAME)
-        settings.noframe = True
+            (settings.screen_width,settings.screen_height),pygame.FULLSCREEN)
+        settings.fullscreen = True
 
 def free_fall(rect,settings):
     a = 0.1
@@ -767,6 +1074,12 @@ def replay(settings,chesses,dead_chesses,screen):
     dead_chesses.clear()
     create_whole_chess(settings,chesses,screen)
     settings.chesses = chesses[:]
+
+def rewind(settings):
+    settings.game_rewind = True
+    settings.game_active = True
+    settings.game_end = False
+    settings.game_result = None
 
 def determine_camp(chess_2):
     if chess_2.pos in [14,16,19,21,27,32,38,40,43,45]:
@@ -1023,3 +1336,120 @@ def test(settings,screen):
                     m += 1
         n += 1
     print(m)
+
+def calculate_duration(settings):
+    '''interpret timedelta into a string containing day,hour,minute,second'''
+    start = settings.start_time
+    end = settings.end_time
+    duration = end - start
+    if duration.days == 0:
+        message = ''
+    elif duration.days == 1:
+        message = '%s day ' % duration.days
+    else:
+        message = '%s days ' % duration.days
+    if duration.seconds >= 3600:
+        hour = duration.seconds // 3600
+        if hour == 1:
+            message += '%s hour ' % hour
+        else:
+            message += '%s hours ' % hour
+        seconds = duration.seconds % 3600
+        if seconds >= 60:
+            minute = seconds // 60
+            if minute == 1:
+                message += '%s minute ' % minute
+            else:
+                message += '%s minutes ' % minute
+            second = seconds % 60
+            if second <= 1:
+                message += '%s second' % second
+            else:
+                message += '%s seconds' % second
+        else:
+            if seconds <= 1:
+                message += '%s second' % seconds
+            else:
+                message += '%s seconds' % seconds
+    elif duration.seconds >= 60:
+        minute = duration.seconds // 60
+        if minute == 1:
+            message += '%s minute ' % minute
+        else:
+            message += '%s minutes ' % minute
+        second = duration.seconds % 60
+        if second <= 1:
+            message += '%s second' % second
+        else:
+            message += '%s seconds' % second
+    else:
+        if duration.seconds <= 1:
+            message += '%s second' % duration.seconds
+        else:
+            message += '%s seconds' % duration.seconds
+    return message, int(duration.total_seconds())
+
+def game_record(settings,screen):
+    '''check if moving steps are record high, also show it on the display
+    also check if time duration is record high, show it on display'''
+    #first determine if made record
+    messgae_time, seconds = calculate_duration(settings)
+    record_step = False
+    record_time = False
+    filename=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\game_record.txt'
+    try:
+        with open(filename) as f:
+            score = f.read()
+            score = score.split()
+    except FileNotFoundError:
+        filename = 'game_record.txt'
+        with open(filename) as f:
+            score = f.read()
+            score = score.split()
+    if int(score[0]) < len(settings.move_cache):
+        record_step = True
+        content = '%s %s' % (len(settings.move_cache),score[1])
+    if int(score[1]) < seconds:
+        record_time = True
+        content = '%s %s' % (score[0],seconds)
+    if record_step and record_time:
+        content = '%s %s' % (len(settings.move_cache),seconds)
+    #write record
+    if record_time or record_step:
+        filename=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\game_record.txt'
+        try:
+            with open(filename,'w') as f:
+                f.write(content)
+        except FileNotFoundError:
+            filename = 'game_record.txt'
+            with open(filename,'w') as f:
+                f.write(content)
+
+    #prep step msg
+    if record_step:
+        msg='This round smashed past record with '+str(len(settings.move_cache))
+        msg += ' steps moved!'
+    else:
+        msg = str(len(settings.move_cache))+' steps moved.'
+
+    step_image = settings.board_font.render(msg,True,settings.notice_color,
+                                                    settings.bg_color)
+    step_image_rect = step_image.get_rect()
+    step_image_rect.centerx = settings.screen_rect.centerx
+    step_image_rect.bottom = settings.screen_rect.bottom
+
+    #prep time msg
+    if record_time:
+        msg = 'The longest game of '+messgae_time+'!'
+    else:
+        msg = 'This round lasted '+messgae_time+'.'
+
+    time_image = settings.board_font.render(msg,True,settings.notice_color,
+                                                    settings.bg_color)
+    time_image_rect = time_image.get_rect()
+    time_image_rect.centerx = settings.screen_rect.centerx
+    time_image_rect.bottom = step_image_rect.top
+
+    settings.calculating = False
+
+    return (step_image,step_image_rect,time_image,time_image_rect)

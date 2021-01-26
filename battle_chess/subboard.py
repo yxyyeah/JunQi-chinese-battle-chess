@@ -10,7 +10,7 @@ class LoseBoard(Board):
         self.prep_text(msg)
 
     def action(self):
-        self.settings.game_lose = True
+        self.settings.game_result = 'win'
         self.settings.win_music_play = True
         self.settings.game_end = True
 
@@ -25,5 +25,5 @@ class TieBoard(Board):
         self.prep_text(msg)
     
     def action(self):
-        self.settings.game_tie = True
+        self.settings.game_result = 'tie'
         self.settings.game_end = True

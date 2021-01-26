@@ -3,14 +3,14 @@ import win32api,win32con
 class Settings():
     
     def __init__(self):
-        
+
     #screen
         self.screen_width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
         self.screen_height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
         self.bg_color = (0,0,0)
-        self.noframe = True
+        self.fullscreen = True
         self.screen = pygame.display.set_mode(
-                    (self.screen_width,self.screen_height),pygame.NOFRAME)
+                    (self.screen_width,self.screen_height),pygame.FULLSCREEN)
         self.screen_rect = self.screen.get_rect()
     
     #red half bg - used to indicate who goes first
@@ -22,7 +22,7 @@ class Settings():
         f=r'images\1536_864.jpg'
         try:
             bg_image = pygame.image.load(f)
-        except pygame.error:
+        except FileNotFoundError:
             f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\1536_864.jpg'
             bg_image = pygame.image.load(f)
         self.bg_image_width = int(self.screen_width/1.32)
@@ -37,7 +37,7 @@ class Settings():
         f = r'images\palm.png'
         try:
             palm_image = pygame.image.load(f)
-        except pygame.error:
+        except FileNotFoundError:
             f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\palm.png'
             palm_image = pygame.image.load(f)
         self.palm_image_width = int(self.screen_width/1280*25)
@@ -49,7 +49,7 @@ class Settings():
         f = r'images\fist.png'
         try:
             fist_image = pygame.image.load(f)
-        except pygame.error:
+        except FileNotFoundError:
             f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\fist.png'
             fist_image = pygame.image.load(f)
         self.fist_image_width = int(self.screen_width/1280*25*1.2)
@@ -68,7 +68,7 @@ class Settings():
         f = r'images\victory.jpg'
         try:
             self.win_image = pygame.image.load(f).convert()
-        except pygame.error:
+        except FileNotFoundError:
             f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\victory.jpg'
             self.win_image = pygame.image.load(f).convert()
         self.alpha_value = 0
@@ -82,7 +82,7 @@ class Settings():
         f = r'images\tie_flag.png'
         try:
             self.tie_image = pygame.image.load(f)
-        except pygame.error:
+        except FileNotFoundError:
             f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\tie_flag.png'
             self.tie_image = pygame.image.load(f)
         self.tie_image_width = int(5*self.screen_width/128)
@@ -105,7 +105,7 @@ class Settings():
         f = r'images\tie_flagt.png'
         try:
             self.tie_imaget = pygame.image.load(f)
-        except pygame.error:
+        except FileNotFoundError:
             f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\tie_flagt.png'
             self.tie_imaget = pygame.image.load(f)
         self.tie_imaget = pygame.transform.scale(self.tie_imaget,tie_image_size)
@@ -121,7 +121,7 @@ class Settings():
         f = r'images\wh_flag.png'
         try:
             self.wh_image = pygame.image.load(f)
-        except pygame.error:
+        except FileNotFoundError:
             f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\wh_flag.png'
             self.wh_image = pygame.image.load(f)
         self.wh_image_width = self.tie_image_width
@@ -134,7 +134,7 @@ class Settings():
         f = r'images\wh_flagt.png'
         try:
             self.wht_image = pygame.image.load(f)
-        except pygame.error:
+        except FileNotFoundError:
             f=r'C:\Users\AAAAA\Desktop\python_work\battle_chess\images\wh_flagt.png'
             self.wht_image = pygame.image.load(f)
         self.wht_image = pygame.transform.scale(self.wht_image,wh_image_size)
@@ -261,7 +261,8 @@ class Settings():
         self.chess_2 = None
         #chess_1 index cache
         self.chess1index = None
-        #create an unchangable chesses index
+        #create an unchangable chesses index, used for determine move position
+        #b/c at that time the moved one is removed from chesses
         self.chesses = None
         #chess_1 center cache used for moving chess_1, does not effect undo
         self.a = None
@@ -273,19 +274,20 @@ class Settings():
         #used to undo
         self.allow_undo = False
 
-        #used to determine who's red and who's black
+        #used to determine who's red and who's black #not being used
         self.color_confirmed = False
         self.count = 0
 
-        self.game_win = False
-        self.game_tie = False
-        self.game_lose = False
-        self.game_end = False
+        #put game win and game tie in game result as strs.
+        self.game_result = None
+        #game end is true when before pushing the play button, or a round ends
+        self.game_end = True
         #determine whether one can admit tie or lose
         self.game_allow_end = False
-        #when notice board pop up, or before pushing the play button, 
-        #game will not be active
-        self.game_active = False
+        #when notice board pop up, game will not be active
+        self.game_active = True
+        #control game rewind, used in func rewind
+        self.game_rewind = False
         #used to control if one side has no pieces then game end
         self.red_no_pieces = True
         self.black_no_pieces = True
@@ -298,6 +300,16 @@ class Settings():
         self.play_button = None
         #moved chess cache used for undo
         self.move_cache = []
+
+        #used to compare steps moved to the records; and calculate time duration only once
+        self.calculating = True
+        #store the stat image
+        self.draw_stat = None
+        
+        #calculate game duration, the start_time is stored right after botton click detected
+        #end_time is stored when game result is win or tie in func update_screen
+        self.start_time = None
+        self.end_time = None
     #win music
         f = r'victory.ogg'
         try:
@@ -344,21 +356,24 @@ class Settings():
         self.color_confirmed = False
         self.count = 0
 
-        self.game_win = False
-        self.game_tie = False
-        self.game_lose = False
-        self.game_end = False
+        self.game_result = None
+        self.game_end = True
         #determine whether one can admit tie or lose
         self.game_allow_end = False
-        self.game_active = False
+        self.game_active = True
+        self.game_rewind = False
         self.red_no_pieces = True
         self.black_no_pieces = True
         self.move_cache = []
+        self.calculating = True
+        self.draw_stat = None
         self.win_music_play = False
         self.red_bg = False
         self.show_order = False
         self.play_button_on = True
         self.play_button = None
+        self.start_time = None
+        self.end_time = None
 
         #distribute position
         self.pos_num = 0

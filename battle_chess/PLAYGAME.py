@@ -1,6 +1,5 @@
 import pygame
 import os
-from pygame.sprite import Group
 import game_func
 from settings import Settings
 from button import Button
@@ -23,8 +22,16 @@ def run_game():
     settings.chesses = chesses[:]
 
     while True:
-        game_func.check_event(chesses,settings,dead_chesses,screen)
+        for event in pygame.event.get():
+            if not settings.game_end and not settings.game_rewind:
+                game_func.check_event_ingame(chesses,settings,dead_chesses,screen,event)
+            if settings.game_rewind:
+                game_func.check_event_gamerewind(chesses,settings,dead_chesses,screen,event)
+            if settings.game_end:
+                game_func.check_event_gameend(chesses,settings,dead_chesses,screen,event)
+            game_func.check_event_display(chesses,settings,dead_chesses,screen,event)
+
         game_func.update_screen(settings,screen,chesses,dead_chesses,
-                                                    settings.play_button)
+                                                        settings.play_button)
 
 run_game()
