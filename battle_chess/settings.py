@@ -263,8 +263,9 @@ class Settings():
         self.chess1index = None
         #create an unchangable chesses index, used for determine move position
         #b/c at that time the moved one is removed from chesses
+        #why need this? b/c in the determine_mov_pos func, it will need the index to locate.
         self.chesses = None
-        #chess_1 center cache used for moving chess_1, does not effect undo
+        #chess_1 center position cache used for moving chess_1, does not effect undo
         self.a = None
         #chess_1 moves with mouse
         self.chess_move = False
@@ -274,9 +275,14 @@ class Settings():
         #used to undo
         self.allow_undo = False
 
-        #used to determine who's red and who's black #not being used
+        #used to determine who's red and who's black
         self.color_confirmed = False
         self.count = 0
+        self.move_1 = None      #used for determine who's red or black in func color_confirmed
+
+        #used to determine who's turn is it, players MUST take turns to go
+        #the alter_move_control is placed in the check ingame event func
+        self.move_control = 0
 
         #put game win and game tie in game result as strs.
         self.game_result = None
@@ -310,6 +316,25 @@ class Settings():
         #end_time is stored when game result is win or tie in func update_screen
         self.start_time = None
         self.end_time = None
+
+    #game statistics, reset each round
+        self.player_1 = 'yxy'
+        self.player_2 = 'yyg'
+        #default: left -> player 1
+        self.first_move = None
+        self.steps_before_c_confirmed = 0
+        self.player_1_color = None
+        self.move_start = 0
+        self.move_end = 0
+        self.p1_movtime = 0
+        self.p2_movtime = 0
+        self.p1_steps = 0
+        self.p2_steps = 0
+        self.p1_units_destroyed = 0
+        self.p2_units_destroyed = 0
+        self.winner = None
+        self.total_time_lasted = None
+        self.total_steps_moved = None
     #win music
         f = r'victory.ogg'
         try:
@@ -355,6 +380,8 @@ class Settings():
         #used to determine who's red and who's black
         self.color_confirmed = False
         self.count = 0
+        self.move_1 = None 
+        self.move_control = 0
 
         self.game_result = None
         self.game_end = True
@@ -375,6 +402,25 @@ class Settings():
         self.start_time = None
         self.end_time = None
 
+    #game statistics, reset each round
+        self.player_1 = 'yxy'
+        self.player_2 = 'yyg'
+        #default: left -> player 1
+        self.first_move = None
+        self.steps_before_c_confirmed = 0
+        self.player_1_color = None
+        self.move_start = 0
+        self.move_end = 0
+        self.p1_movtime = 0
+        self.p2_movtime = 0
+        self.p1_steps = 0
+        self.p2_steps = 0
+        self.p1_units_destroyed = 0
+        self.p2_units_destroyed = 0
+        self.winner = None
+        self.total_time_lasted = None
+        self.total_steps_moved = None
+        
         #distribute position
         self.pos_num = 0
         #variables related to free fall

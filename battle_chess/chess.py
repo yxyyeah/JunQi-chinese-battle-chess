@@ -28,8 +28,9 @@ class Chess(Sprite):
         self.rank = 0
 #the position on the chess board
         self.pos = 0
-#use to determine whether it is red or black's turn
-        self.color_control = 0
+#chess can only be moved if chess.move_control == settings.move_control
+#red -> 1, black -> -1
+        self.move_control = 0
 
         self.angle = self.random_angle()
 

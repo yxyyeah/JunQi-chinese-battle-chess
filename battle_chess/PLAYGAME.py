@@ -1,5 +1,5 @@
-import pygame
 import os
+import pygame
 import game_func
 from settings import Settings
 from button import Button
