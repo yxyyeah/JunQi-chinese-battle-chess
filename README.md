@@ -1,6 +1,8 @@
 # JunQi-a-kind-of-chinese-chess
 This is my first project written in Pygame as a newbie in Python. I started learning python a few monthes ago, learning by the book Python Crash Course by ehMatthes.  
-This JunQi program is a practice of my understandings of the python basics and Pygame. (I would appreciate it if you can give me some constructive advice on my code :))  
+This JunQi program is a practice of my understandings of the python basics and Pygame. (I would appreciate it if you can give me some constructive advice on my code :)) 
+
+if you encounter any problem feel free to submit an issue!
 # The game needs two players, one is red and the other is black. Like other chess rules, the two players take turns to move their chess, following JunQi's specific rules:  
 1. high ranking piece eats low ranking piece ('司令'>'军长'>'师长'>'旅长'>'团长'>'营长'>'连长'>'排长'>'工兵')  
 2. '炸弹' destroys everything (except '军旗') and itself  
