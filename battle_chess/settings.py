@@ -318,8 +318,8 @@ class Settings():
         self.end_time = None
 
     #game statistics, reset each round
-        self.player_1 = 'yxy'
-        self.player_2 = 'yyg'
+        self.player_1 = 'player1'
+        self.player_2 = 'player2'
         #default: left -> player 1
         self.first_move = None
         self.steps_before_c_confirmed = 0
