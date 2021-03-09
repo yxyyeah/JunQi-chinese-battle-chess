@@ -1,4 +1,5 @@
 # JunQi-a-kind-of-chinese-chess
+first you need to install the latest version of pygame, and pywin32
 This is my first project written in Pygame as a newbie in Python. I started learning python a few monthes ago, learning by the book Python Crash Course by ehMatthes.  
 This JunQi program is a practice of my understandings of the python basics and Pygame. (I would appreciate it if you can give me some constructive advice on my code :)) 
 
