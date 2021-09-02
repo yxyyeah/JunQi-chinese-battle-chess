@@ -1,8 +1,5 @@
-# JunQi-a-kind-of-chinese-chess
-first you need to install the latest version of pygame, and pywin32
-
-This is my first project written in Pygame as a newbie in Python. I started learning python a few monthes ago, learning by the book Python Crash Course by ehMatthes.  
-This JunQi program is a practice of my understandings of the python basics and Pygame. (I would appreciate it if you can give me some constructive advice on my code :)) 
+# JunQi-battle-chess
+First you need to pip install the latest version of pygame and pywin32. Then git clone this repository and enter the game by clicking the file "PLAYGAME.py"
 
 if you encounter any problem feel free to submit an issue!
 # The game needs two players, one is red and the other is black. Like other chess rules, the two players take turns to move their chess, following JunQi's specific rules:  
@@ -30,7 +27,9 @@ is a covered piece
   
 copyright issues:  
 the sound and image of victory are my recordings from Command and Conquer Generals: Zero Hour  
-  
+ 
+This is my first project written in Pygame as a newbie in Python. I started learning python a few monthes ago, learning by the book Python Crash Course by ehMatthes.  
+This JunQi program is a practice of my understandings of the python basics and Pygame. (I would appreciate it if you can give me some constructive advice on my code :))
   
 Thanks for reading!  
 I hope you get inspired!
