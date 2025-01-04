@@ -1,3 +1,5 @@
+[中文](README_ZH.md)
+
 # JunQi-battle-chess
 Git clone this repository, do `pip install -r requirements.txt`, and enter the game by clicking the file "PLAYGAME.py"
 
